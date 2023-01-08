@@ -1,33 +1,96 @@
-import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 import { Scrollbars } from "react-custom-scrollbars-2";
 import { DragDropContext, Droppable, DropResult } from "react-beautiful-dnd";
+import { useHotkeys } from "react-hotkeys-hook";
 
 import Tab from "./components/Tab";
-import { reorder } from "./utils";
+import { clamp, reorder } from "./utils";
 
-const App = () => {
+const Popup = () => {
     const [tabs, setTabs] = useState<chrome.tabs.Tab[]>([]);
-    const [searchTerm, setSearchTerm] = useState("");
+    const [selectedTab, setSelectedTab] = useState(0);
+    const [modifier, setModifier] = useState(1);
+
+    const updateCurrentTab = (delta: number) => {
+        setSelectedTab((currTab) =>
+            clamp(currTab + modifier * delta, 0, tabs.length - 1)
+        );
+    };
+
+    useHotkeys("1, 2, 3, 4, 5, 6, 7, 8, 9", (_, handler) => {
+        if (!handler.keys) {
+            return;
+        }
+        let key = +handler.keys?.join("");
+
+        if (isNaN(key)) {
+            return;
+        }
+
+        setModifier(key);
+    });
+
+    useHotkeys(
+        "j",
+        () => {
+            updateCurrentTab(1);
+            setModifier(1);
+        },
+        [tabs, modifier]
+    );
+
+    useHotkeys(
+        "ctrl+d",
+        () => {
+            updateCurrentTab(5);
+            setModifier(1);
+        },
+        [tabs, modifier]
+    );
+
+    useHotkeys(
+        "ctrl+u",
+        () => {
+            updateCurrentTab(-5);
+            setModifier(1);
+        },
+        [tabs, modifier]
+    );
+
+    useHotkeys(
+        "k",
+        () => {
+            updateCurrentTab(-1);
+            setModifier(1);
+        },
+        [tabs, modifier]
+    );
+
+    useHotkeys(
+        "x",
+        () => {
+            let tab = tabs[selectedTab];
+            closeTab(tab);
+        },
+        [tabs, selectedTab]
+    );
+
+    useHotkeys(
+        "enter",
+        () => {
+            focusTab(tabs[selectedTab]);
+        },
+        [selectedTab, tabs]
+    );
 
     const loadTabs = async () => {
         let tabs = await chrome.tabs.query({});
-
-        if (searchTerm && searchTerm != "") {
-            let st = searchTerm.toLowerCase();
-            tabs = tabs.filter(
-                (tab) =>
-                    tab.title?.toLowerCase().includes(st) ||
-                    tab.url?.toLowerCase().includes(st)
-            );
-        }
-
         setTabs(tabs);
     };
 
     useEffect(() => {
         loadTabs();
-    }, [searchTerm]);
+    }, []);
 
     const focusTab = async (tab: chrome.tabs.Tab) => {
         if (!tab.id) {
@@ -45,6 +108,7 @@ const App = () => {
 
         await chrome.tabs.remove(tab.id);
         loadTabs();
+        updateCurrentTab(0);
     };
 
     const onDragEnd = (result: DropResult) => {
@@ -65,20 +129,8 @@ const App = () => {
     };
 
     return (
-        <div className="flex flex-col w-96 py-5 text-slate-50">
-            <h1 className="font-medium mb-3 px-5 text-slate-400">Tabber</h1>
-
-            <div className="relative rounded-md shadow-sm mb-3 mx-5">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <MagnifyingGlassIcon className="h-4 w-4" />
-                </div>
-                <input
-                    className="block w-full bg-slate-700 rounded-md border border-slate-600 p-2 pl-10 focus:border-slate-500 transition outline-none"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.currentTarget.value)}
-                    autoFocus
-                />
-            </div>
+        <div className="flex flex-col w-[500px] py-5 text-slate-50">
+            <h1 className="font-medium mb-3 px-5 text-slate-400">Vitab</h1>
 
             <Scrollbars autoHeight autoHeightMax={450} className="flex-1">
                 <DragDropContext onDragEnd={onDragEnd}>
@@ -91,6 +143,7 @@ const App = () => {
                                 <ul className="px-5">
                                     {tabs.map((tab, index) => (
                                         <Tab
+                                            selectedIndex={selectedTab}
                                             key={tab.id}
                                             index={index}
                                             tab={tab}
@@ -109,4 +162,4 @@ const App = () => {
     );
 };
 
-export default App;
+export default Popup;

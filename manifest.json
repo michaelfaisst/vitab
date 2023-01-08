@@ -15,5 +15,13 @@
     "background": {
         "service_worker": "src/background.ts",
         "type": "module"
+    },
+    "commands": {
+        "_execute_action": {
+            "suggested_key": {
+                "default": "Ctrl+T",
+                "mac": "MacCtrl+T"
+            }
+        }
     }
 }
